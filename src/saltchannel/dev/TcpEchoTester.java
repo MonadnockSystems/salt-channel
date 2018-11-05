@@ -150,6 +150,16 @@ public class TcpEchoTester {
         /* Step 11 */
         closeTest();
 
+        /* Step 12 */
+        singleLongPackageEchoTest();
+        singleLongPackageEchoTest(hostPub);
+        singleLongPackageEchoTest(hostPub, true);
+
+        /* Step 13 */
+        multiLongPackageEchoTest();
+        multiLongPackageEchoTest(hostPub);
+        multiLongPackageEchoTest(hostPub, true);
+
     }
 
     public static void main(final String[] args) throws Throwable {
@@ -320,6 +330,33 @@ public class TcpEchoTester {
         }.go();
     }
 
+    public void singleLongPackageEchoTest() throws Throwable {
+        singleLongPackageEchoTest(null, false);
+    }
+
+    public void singleLongPackageEchoTest(final byte[] expectedPub) throws Throwable {
+        singleLongPackageEchoTest(expectedPub, false);
+    }
+
+    public void singleLongPackageEchoTest(final byte[] expectedPub, final boolean bufferM4) throws Throwable {
+        new Test("Echo request with package larger than 65536 bytes should work") {
+
+            @Override
+            public void run() throws IOException {
+                environment.handshake(bufferM4, expectedPub);
+                byte[] request = new byte[65536 * 2];
+                request[0] = 0x01;
+                environment.saltChannel.write(false, request);
+                byte[] response = environment.saltChannel.read();
+
+                if (!Arrays.equals(request, response)) {
+                    throw new AssertionError("Response differs from request");
+                }
+
+            }
+        }.go();
+    }
+
     public void multiPackageEchoTest() throws Throwable {
         multiPackageEchoTest(null, false);
     }
@@ -346,6 +383,52 @@ public class TcpEchoTester {
 
                 if (!Arrays.equals(request2, response2)) {
                     throw new AssertionError("Response 2 differs from request");
+                }
+
+            }
+        }.go();
+    }
+
+    public void multiLongPackageEchoTest() throws Throwable {
+        multiLongPackageEchoTest(null, false);
+    }
+
+    public void multiLongPackageEchoTest(final byte[] expectedPub) throws Throwable {
+        multiLongPackageEchoTest(expectedPub, false);
+    }
+
+    public void multiLongPackageEchoTest(final byte[] expectedPub, final boolean bufferM4) throws Throwable {
+        new Test("Multiple packages with size 65536 should work.") {
+
+            @Override
+            public void run() throws IOException {
+                environment.handshake(bufferM4, expectedPub);
+                byte[] request1 = new byte[65536]; request1[0] = 0x01;
+                byte[] request2 = new byte[65536]; request2[0] = 0x01;
+                byte[] request3 = new byte[65536]; request3[0] = 0x01;
+                byte[] request4 = new byte[65536 * 2]; request4[0] = 0x01;
+
+                environment.saltChannel.write(false, request1, request2, request3, request4);
+
+                byte[] response1 = environment.saltChannel.read();
+                byte[] response2 = environment.saltChannel.read();
+                byte[] response3 = environment.saltChannel.read();
+                byte[] response4 = environment.saltChannel.read();
+
+                if (!Arrays.equals(request1, response1)) {
+                    throw new AssertionError("Response 1 differs from request");
+                }
+
+                if (!Arrays.equals(request2, response2)) {
+                    throw new AssertionError("Response 2 differs from request");
+                }
+
+                if (!Arrays.equals(request3, response3)) {
+                    throw new AssertionError("Response 3 differs from request");
+                }
+
+                if (!Arrays.equals(request4, response4)) {
+                    throw new AssertionError("Response 3 differs from request");
                 }
 
             }
